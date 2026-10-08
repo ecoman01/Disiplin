@@ -1,0 +1,6 @@
+{
+  "name": "Disipline Ol",
+  "description": "7 günlük antrenman sistemi, Motivasyon AI, sağlıklı tarif ve fit tatlılar, mesleğe özel tavsiyeler, Seviye 0 başlangıçlı irade takipçisi, Neon ve Siyah-Beyaz temalar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
