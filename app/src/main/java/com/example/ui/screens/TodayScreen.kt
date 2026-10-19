@@ -44,6 +44,7 @@ import com.example.data.DisciplineLevelEngine
 import com.example.data.DisciplineLionEngine
 import com.example.data.UserProfile
 import com.example.data.WorkoutPlanEntity
+import com.example.ui.components.WeeklyWorkoutTracker
 import com.example.ui.theme.*
 
 @Composable
@@ -61,6 +62,12 @@ fun TodayScreen(
     onOpenMotivation: () -> Unit = {},
     onOpenTransform: () -> Unit = {},
     onOpenRecipes: () -> Unit = {},
+    completedDays: Set<Int> = emptySet(),
+    onToggleWeeklyDay: (Int) -> Unit = {},
+    onMarkAllWeeklyDays: () -> Unit = {},
+    onResetWeeklyDays: () -> Unit = {},
+    allWorkoutPlans: List<WorkoutPlanEntity> = emptyList(),
+    currentDayOfWeek: Int = 1,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -515,6 +522,92 @@ fun TodayScreen(
                 )
             }
         }
+
+        // 💬 DİSİPLİN KOÇUYLA KONUŞ (Hero Coach Chat Banner)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenMotivation() }
+                .testTag("coach_chat_quick_card"),
+            colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated),
+            shape = RoundedCornerShape(22.dp),
+            border = androidx.compose.foundation.BorderStroke(1.2.dp, TacticalGreen)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(TacticalGreenContainer)
+                            .border(1.5.dp, TacticalGreenBright, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "💬", fontSize = 22.sp)
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "DİSİPLİN KOÇU CHAT",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Black,
+                                    color = TextPrimary
+                                )
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = TacticalGreenContainer
+                            ) {
+                                Text(
+                                    text = "CANLI",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = TacticalGreenBright,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp
+                                    )
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Bahaneleri yık, hazır seçeneklerle motivasyon topla",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 11.5.sp)
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = TacticalGreenBright
+                )
+            }
+        }
+
+        // 📅 HAFTALIK ANTRENMAN TAKİPÇİSİ (7 Günlük Checkbox Listesi)
+        WeeklyWorkoutTracker(
+            plans = allWorkoutPlans,
+            completedDays = completedDays,
+            currentDayOfWeek = currentDayOfWeek,
+            weeklyTarget = weeklyTarget,
+            onToggleDay = onToggleWeeklyDay,
+            onSelectPlan = { onStartWorkout(it) },
+            onMarkAllCompleted = onMarkAllWeeklyDays,
+            onResetWeek = onResetWeeklyDays
+        )
 
         // 🎯 BUGÜNÜN GÖREVİ / MİSYONU (Geometric Balance Hero Card)
         Card(

@@ -557,4 +557,11 @@ class DisciplineRepository(private val database: DisciplineDatabase) {
             userDao.update(current.copy(todayVsOldScore = newScore))
         }
     }
+
+    suspend fun awardTrackerXp(amount: Int) {
+        val current = userDao.getUserProfileSync() ?: return
+        val newXp = current.xp + amount
+        val newLevel = DisciplineLevelEngine.getLevelInfo(newXp).level
+        userDao.update(current.copy(xp = newXp, level = newLevel))
+    }
 }

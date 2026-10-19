@@ -3,11 +3,17 @@ package com.example.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.CoachActionType
+import com.example.data.CoachChatEngine
+import com.example.data.CoachChatMessage
+import com.example.data.CoachPersona
+import com.example.data.CoachPromptOption
 import com.example.data.DisciplineDatabase
 import com.example.data.DisciplineEngine
 import com.example.data.DisciplineHabit
 import com.example.data.DisciplineRepository
 import com.example.data.JourneyMilestoneEntity
+import com.example.data.MessageSender
 import com.example.data.MotivationQuote
 import com.example.data.NotificationHelper
 import com.example.data.NotificationPreferences
@@ -21,6 +27,7 @@ import com.example.data.WorkoutLogEntity
 import com.example.data.WorkoutPlanEntity
 import com.example.ui.theme.AppTheme
 import com.example.ui.theme.AppThemeManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class ActiveExerciseState(
     val exercise: PlanExerciseEntity,
@@ -86,6 +94,35 @@ class DisciplineViewModel(application: Application) : AndroidViewModel(applicati
 
     val motivationQuotes: List<MotivationQuote> = DisciplineEngine.motivationQuotes
 
+    // 💬 DİSİPLİN KOÇU CHAT BOT STATE
+    private val _coachPersona = MutableStateFlow(CoachPersona.DEMIR_KOC)
+    val coachPersona: StateFlow<CoachPersona> = _coachPersona.asStateFlow()
+
+    private val _coachMessages = MutableStateFlow<List<CoachChatMessage>>(emptyList())
+    val coachMessages: StateFlow<List<CoachChatMessage>> = _coachMessages.asStateFlow()
+
+    private val _isCoachTyping = MutableStateFlow(false)
+    val isCoachTyping: StateFlow<Boolean> = _isCoachTyping.asStateFlow()
+
+    private val _currentChatCategory = MutableStateFlow("🔥 Bahaneleri Yık")
+    val currentChatCategory: StateFlow<String> = _currentChatCategory.asStateFlow()
+
+    // 📅 7 GÜNLÜK HAFTALIK ANTRENMAN TAKİPÇİSİ STATE
+    private val weeklyPrefs = application.getSharedPreferences("discipline_weekly_tracker", android.content.Context.MODE_PRIVATE)
+
+    private fun loadWeeklyCompletedDays(): Set<Int> {
+        val raw = weeklyPrefs.getString("completed_days_set", null)
+        if (raw == null) {
+            // First time default: 1st and 2nd days pre-checked as helpful example
+            return setOf(1, 2)
+        }
+        if (raw.isBlank()) return emptySet()
+        return raw.split(",").mapNotNull { it.toIntOrNull() }.filter { it in 1..7 }.toSet()
+    }
+
+    private val _weeklyCompletedDays = MutableStateFlow<Set<Int>>(loadWeeklyCompletedDays())
+    val weeklyCompletedDays: StateFlow<Set<Int>> = _weeklyCompletedDays.asStateFlow()
+
     val struggleEvaluation: StateFlow<StruggleEvaluationResult> = combine(
         repository.userProfile,
         _dailyHabits,
@@ -115,6 +152,113 @@ class DisciplineViewModel(application: Application) : AndroidViewModel(applicati
                 repository.updateTodayVsOldScore(eval.todayScore)
             }
         }
+        viewModelScope.launch {
+            userProfile.collect { profile ->
+                if (_coachMessages.value.isEmpty()) {
+                    val initialPersona = when (profile?.motivationStyle) {
+                        "Stoik & Soğukkanlı Felsefe" -> CoachPersona.STOIK_MARCUS
+                        "Şampiyon & Mamba Zihniyeti" -> CoachPersona.MAMBA_KOBE
+                        "Odak & Sade Eylem" -> CoachPersona.BILGE_USTA
+                        else -> CoachPersona.DEMIR_KOC
+                    }
+                    _coachPersona.value = initialPersona
+                    _coachMessages.value = listOf(
+                        CoachChatEngine.getDefaultWelcomeMessage(initialPersona, profile)
+                    )
+                }
+            }
+        }
+    }
+
+    fun selectCoachPersona(persona: CoachPersona) {
+        _coachPersona.value = persona
+        val welcomeMsg = CoachChatEngine.getDefaultWelcomeMessage(persona, userProfile.value)
+        _coachMessages.value = _coachMessages.value + welcomeMsg
+    }
+
+    fun selectChatCategory(category: String) {
+        _currentChatCategory.value = category
+    }
+
+    fun sendUserPromptOption(option: CoachPromptOption) {
+        val userMsg = CoachChatMessage(
+            id = UUID.randomUUID().toString(),
+            sender = MessageSender.USER,
+            text = "${option.icon} ${option.label}",
+            timestamp = System.currentTimeMillis()
+        )
+        _coachMessages.value = _coachMessages.value + userMsg
+
+        viewModelScope.launch {
+            _isCoachTyping.value = true
+            delay(650)
+            val response = CoachChatEngine.generateResponse(
+                option = option,
+                persona = _coachPersona.value,
+                userProfile = userProfile.value
+            )
+            _coachMessages.value = _coachMessages.value + response
+            _isCoachTyping.value = false
+        }
+    }
+
+    fun sendUserCustomTextMessage(text: String) {
+        if (text.isBlank()) return
+        val userMsg = CoachChatMessage(
+            id = UUID.randomUUID().toString(),
+            sender = MessageSender.USER,
+            text = text.trim(),
+            timestamp = System.currentTimeMillis()
+        )
+        _coachMessages.value = _coachMessages.value + userMsg
+
+        viewModelScope.launch {
+            _isCoachTyping.value = true
+            delay(750)
+            val response = CoachChatEngine.generateCustomResponse(
+                userText = text.trim(),
+                persona = _coachPersona.value,
+                userProfile = userProfile.value
+            )
+            _coachMessages.value = _coachMessages.value + response
+            _isCoachTyping.value = false
+        }
+    }
+
+    fun resetCoachChat() {
+        _coachMessages.value = listOf(
+            CoachChatEngine.getDefaultWelcomeMessage(_coachPersona.value, userProfile.value)
+        )
+    }
+
+    // 📅 7 GÜNLÜK ANTRENMAN TAKİPÇİSİ METOTLARI
+    fun toggleWeeklyDayCompleted(dayIndex: Int) {
+        val current = _weeklyCompletedDays.value.toMutableSet()
+        val willBeCompleted = !current.contains(dayIndex)
+        if (willBeCompleted) {
+            current.add(dayIndex)
+            viewModelScope.launch {
+                repository.awardTrackerXp(35)
+            }
+        } else {
+            current.remove(dayIndex)
+        }
+        _weeklyCompletedDays.value = current
+        weeklyPrefs.edit().putString("completed_days_set", current.joinToString(",")).apply()
+    }
+
+    fun markAllWeeklyDaysCompleted() {
+        val allDays = (1..7).toSet()
+        _weeklyCompletedDays.value = allDays
+        weeklyPrefs.edit().putString("completed_days_set", allDays.joinToString(",")).apply()
+        viewModelScope.launch {
+            repository.awardTrackerXp(100)
+        }
+    }
+
+    fun resetWeeklyCompletedDays() {
+        _weeklyCompletedDays.value = emptySet()
+        weeklyPrefs.edit().putString("completed_days_set", "").apply()
     }
 
     fun toggleHabit(habitId: String) {
@@ -280,6 +424,11 @@ class DisciplineViewModel(application: Application) : AndroidViewModel(applicati
                 completedExercisesCount = completedCount,
                 updatedWeights = weightsMap
             )
+            val updated = _weeklyCompletedDays.value.toMutableSet()
+            updated.add(current.plan.dayOfWeek)
+            _weeklyCompletedDays.value = updated
+            weeklyPrefs.edit().putString("completed_days_set", updated.joinToString(",")).apply()
+
             _activeSession.value = null
         }
     }

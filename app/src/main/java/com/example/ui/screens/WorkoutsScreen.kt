@@ -35,6 +35,7 @@ import com.example.data.UserProfile
 import com.example.data.WorkoutLogEntity
 import com.example.data.WorkoutPlanEntity
 import com.example.ui.components.TrainingCycleProgressChart
+import com.example.ui.components.WeeklyWorkoutTracker
 import com.example.ui.theme.*
 import com.example.util.ShareHelper
 
@@ -60,6 +61,10 @@ fun WorkoutsScreen(
     onCreateCustomPlan: (title: String, muscles: String, minutes: Int, exercises: List<Pair<String, Pair<Int, Int>>>) -> Unit,
     onResetToProfessionWorkouts: (String) -> Unit = {},
     onRetakeOnboarding: () -> Unit = {},
+    completedDays: Set<Int> = emptySet(),
+    onToggleDay: (Int) -> Unit = {},
+    onMarkAllCompleted: () -> Unit = {},
+    onResetWeek: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -268,6 +273,20 @@ fun WorkoutsScreen(
                     }
                 }
             }
+        }
+
+        // 📅 HAFTALIK ANTRENMAN TAKİPÇİSİ (7 Günlük Checkbox Takip Listesi)
+        item {
+            WeeklyWorkoutTracker(
+                plans = plans,
+                completedDays = completedDays,
+                currentDayOfWeek = currentDayOfWeek,
+                weeklyTarget = userProfile?.weeklyTarget ?: 4,
+                onToggleDay = onToggleDay,
+                onSelectPlan = onSelectPlan,
+                onMarkAllCompleted = onMarkAllCompleted,
+                onResetWeek = onResetWeek
+            )
         }
 
         // 📈 7 GÜNLÜK İDMAN DÖNGÜSÜ İLERLEME GRAFİĞİ (D3 / Recharts Tarzı)

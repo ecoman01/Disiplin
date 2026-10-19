@@ -38,15 +38,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.*
+import com.example.ui.screens.coach.CoachChatScreen
 import com.example.ui.screens.nutrition.StructuredRecipeCard
 import com.example.ui.theme.*
 import com.example.util.ShareHelper
 import kotlinx.coroutines.delay
 
 enum class MotivationAiSubTab(val label: String, val icon: String) {
+    CHAT_COACH("Koç Sohbeti", "💬"),
     QUOTES("Zihniyet & Sözler", "⚡"),
     NUTRITION("Beslenme & Tarifler", "🥗"),
-    COACH("AI Meslek Koçu", "🎯")
+    COACH("Meslek Analizi", "🎯")
 }
 
 @Composable
@@ -62,11 +64,22 @@ fun MotivationScreen(
     userName: String,
     userProfession: String = "Masa Başı & Ofis / Yazılımcı",
     userProfile: UserProfile? = null,
+    coachMessages: List<CoachChatMessage> = emptyList(),
+    isCoachTyping: Boolean = false,
+    coachPersona: CoachPersona = CoachPersona.DEMIR_KOC,
+    chatCategory: String = "🔥 Bahaneleri Yık",
+    onSelectCoachPersona: (CoachPersona) -> Unit = {},
+    onSelectChatCategory: (String) -> Unit = {},
+    onSendPromptOption: (CoachPromptOption) -> Unit = {},
+    onSendCustomText: (String) -> Unit = {},
+    onResetCoachChat: () -> Unit = {},
+    onNavigateToWorkout: () -> Unit = {},
+    initialSubTab: MotivationAiSubTab = MotivationAiSubTab.CHAT_COACH,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
-    var activeSubTab by remember { mutableStateOf(MotivationAiSubTab.QUOTES) }
+    var activeSubTab by remember { mutableStateOf(initialSubTab) }
 
     // Quotes category & filter
     var selectedCategory by remember { mutableStateOf("⭐ Sana Özel") }
@@ -154,57 +167,57 @@ fun MotivationScreen(
         }
     }
 
-    LazyColumn(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .background(DarkBackground)
-            .padding(horizontal = 20.dp)
-            .testTag("motivation_screen"),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 20.dp, bottom = 36.dp)
+            .testTag("motivation_screen")
     ) {
-        // 🚀 MOTIVASYON AI HEADER
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "MOTİVASYON AI",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Black,
-                            color = TextPrimary,
-                            letterSpacing = (-0.5).sp
-                        )
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = TacticalGreenContainer
-                    ) {
-                        Text(
-                            text = "AI GÜÇLÜ",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = TacticalGreenBright,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp
-                            )
-                        )
-                    }
-                }
+        // 🚀 MOTIVASYON & KOÇ HEADER
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text(
-                    text = "Stoik Zihniyet • Sağlıklı Tarifler & Tatlılar • Mesleğe Özel Koçluk",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Medium
+                    text = "MOTİVASYON & KOÇ",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary,
+                        letterSpacing = (-0.5).sp
                     )
                 )
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = TacticalGreenContainer
+                ) {
+                    Text(
+                        text = "AI GÜÇLÜ",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = TacticalGreenBright,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        )
+                    )
+                }
             }
-        }
+            Text(
+                text = "İnteraktif Koç Sohbeti • Stoik Zihniyet • Fit Tarifler • Meslek Koçluğu",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+            )
 
-        // 🔘 SEGMENTED NAVIGATION TABS
-        item {
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 🔘 SEGMENTED NAVIGATION TABS (Koç Sohbeti, Zihniyet, Beslenme, Meslek)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -221,20 +234,20 @@ fun MotivationScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isSelected) TacticalGreen else Color.Transparent)
                             .clickable { activeSubTab = tab }
-                            .padding(vertical = 10.dp),
+                            .padding(vertical = 9.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
-                            Text(text = tab.icon, fontSize = 14.sp)
+                            Text(text = tab.icon, fontSize = 13.sp)
                             Text(
                                 text = tab.label,
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
                                     color = if (isSelected) TacticalGreenButtonText else TextSecondary,
-                                    fontSize = 11.sp
+                                    fontSize = 10.5.sp
                                 ),
                                 maxLines = 1
                             )
@@ -245,9 +258,36 @@ fun MotivationScreen(
         }
 
         // ==========================================
-        // SUB-TAB 1: ZİHNİYET & SÖZLER (Quotes, Stoic, Tools)
+        // SUB-TAB 0: İNTERAKTİF DİSİPLİN KOÇU SOHBETİ
         // ==========================================
-        if (activeSubTab == MotivationAiSubTab.QUOTES) {
+        if (activeSubTab == MotivationAiSubTab.CHAT_COACH) {
+            CoachChatScreen(
+                messages = coachMessages,
+                isCoachTyping = isCoachTyping,
+                currentPersona = coachPersona,
+                currentCategory = chatCategory,
+                onSelectPersona = onSelectCoachPersona,
+                onSelectCategory = onSelectChatCategory,
+                onSendPromptOption = onSendPromptOption,
+                onSendCustomText = onSendCustomText,
+                onResetChat = onResetCoachChat,
+                onNavigateToWorkout = onNavigateToWorkout,
+                onNavigateToRecipes = { activeSubTab = MotivationAiSubTab.NUTRITION },
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 36.dp)
+            ) {
+                // ==========================================
+                // SUB-TAB 1: ZİHNİYET & SÖZLER (Quotes, Stoic, Tools)
+                // ==========================================
+                if (activeSubTab == MotivationAiSubTab.QUOTES) {
             // Kategori Seçici
             item {
                 Row(
@@ -1062,6 +1102,7 @@ fun MotivationScreen(
             }
         }
     }
+}
 
     // ==========================================
     // TARİF DETAY MODALI (Ingredients & Steps)
@@ -1234,4 +1275,5 @@ fun MotivationScreen(
             containerColor = DarkSurfaceElevated
         )
     }
+}
 }

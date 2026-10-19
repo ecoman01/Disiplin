@@ -120,6 +120,15 @@ fun DisciplineApp(viewModel: DisciplineViewModel, initialNavigateTo: String? = n
     val currentQuoteIndex by viewModel.currentQuoteIndex.collectAsState()
     val favoriteQuoteIds by viewModel.favoriteQuoteIds.collectAsState()
 
+    // 💬 DİSİPLİN KOÇU CHAT BOT STATE
+    val coachMessages by viewModel.coachMessages.collectAsState()
+    val isCoachTyping by viewModel.isCoachTyping.collectAsState()
+    val coachPersona by viewModel.coachPersona.collectAsState()
+    val chatCategory by viewModel.currentChatCategory.collectAsState()
+
+    // 📅 7 GÜNLÜK HAFTALIK ANTRENMAN TAKİPÇİSİ STATE
+    val weeklyCompletedDays by viewModel.weeklyCompletedDays.collectAsState()
+
     // Bildirim izni launcher (Android 13+ / API 33+)
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -304,7 +313,13 @@ fun DisciplineApp(viewModel: DisciplineViewModel, initialNavigateTo: String? = n
                             onUpdateName = { viewModel.updateName(it) },
                             onOpenMotivation = { currentTab = DisciplineTab.MOTIVATION },
                             onOpenTransform = { currentTab = DisciplineTab.TRANSFORM },
-                            onOpenRecipes = { showRecipesSheet = true }
+                            onOpenRecipes = { showRecipesSheet = true },
+                            completedDays = weeklyCompletedDays,
+                            onToggleWeeklyDay = { viewModel.toggleWeeklyDayCompleted(it) },
+                            onMarkAllWeeklyDays = { viewModel.markAllWeeklyDaysCompleted() },
+                            onResetWeeklyDays = { viewModel.resetWeeklyCompletedDays() },
+                            allWorkoutPlans = workoutPlans,
+                            currentDayOfWeek = todayDayIdx
                         )
                     }
                     DisciplineTab.TRANSFORM -> {
@@ -325,7 +340,17 @@ fun DisciplineApp(viewModel: DisciplineViewModel, initialNavigateTo: String? = n
                             onToggleHabit = { viewModel.toggleHabit(it) },
                             userName = userProfile?.name?.ifBlank { "Savaşçı" } ?: "Savaşçı",
                             userProfession = userProfile?.profession ?: "Masa Başı & Ofis / Yazılımcı",
-                            userProfile = userProfile
+                            userProfile = userProfile,
+                            coachMessages = coachMessages,
+                            isCoachTyping = isCoachTyping,
+                            coachPersona = coachPersona,
+                            chatCategory = chatCategory,
+                            onSelectCoachPersona = { viewModel.selectCoachPersona(it) },
+                            onSelectChatCategory = { viewModel.selectChatCategory(it) },
+                            onSendPromptOption = { viewModel.sendUserPromptOption(it) },
+                            onSendCustomText = { viewModel.sendUserCustomTextMessage(it) },
+                            onResetCoachChat = { viewModel.resetCoachChat() },
+                            onNavigateToWorkout = { currentTab = DisciplineTab.WORKOUTS }
                         )
                     }
                     DisciplineTab.WORKOUTS -> {
@@ -346,7 +371,11 @@ fun DisciplineApp(viewModel: DisciplineViewModel, initialNavigateTo: String? = n
                             onResetToProfessionWorkouts = { prof ->
                                 viewModel.applyProfessionWorkouts(prof)
                             },
-                            onRetakeOnboarding = { forceShowOnboarding = true }
+                            onRetakeOnboarding = { forceShowOnboarding = true },
+                            completedDays = weeklyCompletedDays,
+                            onToggleDay = { viewModel.toggleWeeklyDayCompleted(it) },
+                            onMarkAllCompleted = { viewModel.markAllWeeklyDaysCompleted() },
+                            onResetWeek = { viewModel.resetWeeklyCompletedDays() }
                         )
                     }
                     DisciplineTab.JOURNEY -> {
